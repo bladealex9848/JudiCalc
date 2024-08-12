@@ -2,23 +2,42 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 import json
+import os
 
-def load_holidays(year):
-    with open(f'assets/holidays_{year}.json', 'r') as f:
-        return json.load(f)
+def load_data(year):
+    holidays = []
+    working_days = {}
+    try:
+        with open(f'assets/holidays_{year}.json', 'r') as f:
+            holidays = json.load(f)
+        df = pd.read_csv(f'assets/dias_habiles_{year}.csv')
+        working_days = df.set_index('Mes').to_dict()
+    except FileNotFoundError:
+        st.warning(f"No se encontraron archivos para el año {year}. Usando datos por defecto.")
+        holidays = ["2023-01-01", "2023-05-01", "2023-12-25"]  # Días festivos por defecto
+    return holidays, working_days
 
-def calculate_working_days(start_date, end_date, specialty, holidays):
-    working_days = 0
+def calculate_working_days(start_date, end_date, specialty, working_days):
+    total_days = 0
     current_date = start_date
     while current_date <= end_date:
-        if current_date.weekday() < 5 and current_date.strftime('%Y-%m-%d') not in holidays:
-            working_days += 1
-        current_date += timedelta(days=1)
-    
-    if specialty == 'Colectiva' and current_date.month == 12:
-        working_days -= 7
-    
-    return working_days
+        month = current_date.strftime('%B').lower()  # Obtiene el nombre del mes en minúsculas
+        month_es = {
+            'january': 'Enero', 'february': 'Febrero', 'march': 'Marzo', 'april': 'Abril',
+            'may': 'Mayo', 'june': 'Junio', 'july': 'Julio', 'august': 'Agosto',
+            'september': 'Septiembre', 'october': 'Octubre', 'november': 'Noviembre', 'december': 'Diciembre'
+        }[month]
+        if month_es in working_days[specialty]:
+            if current_date.month == start_date.month:
+                days_in_month = (min(end_date, current_date.replace(day=1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)).day
+                days_to_count = days_in_month - start_date.day + 1
+                total_days += (working_days[specialty][month_es] * days_to_count) // days_in_month
+            elif current_date.month == end_date.month:
+                total_days += (working_days[specialty][month_es] * end_date.day) // end_date.day
+            else:
+                total_days += working_days[specialty][month_es]
+        current_date = (current_date.replace(day=1) + timedelta(days=32)).replace(day=1)  # Avanza al siguiente mes
+    return total_days
 
 st.set_page_config(
     page_title="JudiCalc - Calculadora de Días Hábiles",
@@ -32,7 +51,11 @@ st.set_page_config(
     }
 )
 
-st.sidebar.image("assets/logo.png", width=200)
+if os.path.exists("assets/logo.png"):
+    st.sidebar.image("assets/logo.png", width=200)
+else:
+    st.sidebar.warning("Logo no encontrado")
+
 st.sidebar.title("Recursos Adicionales")
 with st.sidebar.expander("Ver Recursos Adicionales", expanded=False):
     st.markdown("[Manual de Usuario](https://github.com/bladealex9848/JudiCalc/wiki)")
@@ -46,7 +69,13 @@ st.write("""
 """)
 
 year = st.sidebar.selectbox("Seleccione el año", [2023])
-holidays = load_holidays(year)
+holidays, working_days = load_data(year)
+
+# Opción para cargar archivo de días festivos personalizado
+uploaded_file = st.sidebar.file_uploader("Cargar archivo de días festivos personalizado", type="json")
+if uploaded_file is not None:
+    holidays = json.load(uploaded_file)
+    st.sidebar.success("Archivo de días festivos cargado con éxito")
 
 specialty = st.sidebar.selectbox(
     "Seleccione la especialidad",
@@ -62,18 +91,14 @@ with col2:
 if start_date > end_date:
     st.error("La fecha de inicio debe ser anterior a la fecha de fin.")
 else:
-    working_days = calculate_working_days(start_date, end_date, specialty, holidays)
+    working_days_count = calculate_working_days(start_date, end_date, specialty, working_days)
     
-    st.success(f"Días hábiles entre {start_date} y {end_date} para la especialidad {specialty}: {working_days}")
+    st.success(f"Días hábiles entre {start_date} y {end_date} para la especialidad {specialty}: {working_days_count}")
 
-    # Leer desde el año seleccionado y mostrar en una tabla, sino mostrar mensaje de error
-    try:
-        st.subheader(f'Días hábiles por mes en {year}')
-        df = pd.read_csv(f'assets/dias_habiles_{year}.csv')
-        st.table(df)
-    except FileNotFoundError:
-        st.error("No se encontró el archivo de festivos para el año seleccionado.")    
-    
+    st.subheader(f'Días hábiles por mes en {year}')
+    df = pd.DataFrame(working_days)
+    st.table(df)
+
 st.sidebar.markdown("---")
 st.sidebar.write("Desarrollado por Alexander Oviedo Fadul")
 st.sidebar.write("Consejo Seccional de la Judicatura de Sucre")
