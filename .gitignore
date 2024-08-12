@@ -18,8 +18,8 @@ Thumbs.db
 
 # Archivos de datos y logs
 *.log
-*.csv
-*.json
+# *.csv
+# *.json
 
 # Archivos temporales
 *.tmp
