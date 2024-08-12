@@ -1,0 +1,53 @@
+# Archivos y carpetas específicos de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Entornos virtuales
+venv/
+env/
+.env
+
+# Archivos de configuración de IDEs
+.vscode/
+.idea/
+
+# Archivos de sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos de datos y logs
+*.log
+*.csv
+*.json
+
+# Archivos temporales
+*.tmp
+
+# Archivos de Streamlit
+.streamlit/
+
+# Directorios de construcción
+build/
+dist/
+
+# Archivos de caché
+.cache/
+
+# Archivos de dependencias
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Archivos de test
+.coverage
+.pytest_cache/
+
+# Archivos de documentación
+docs/_build/
+
+# Archivos de Jupyter Notebook
+.ipynb_checkpoints
+
+# Archivos específicos del proyecto (ajustar según sea necesario)
+# holidays_*.json
+# dias_habiles_*.csv
